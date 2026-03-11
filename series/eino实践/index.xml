@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Eino实践 on ZZM Dev</title><link>https://zzm996-zzm.github.io/seven/series/eino%E5%AE%9E%E8%B7%B5/</link><description>Recent content in Eino实践 on ZZM Dev</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Tue, 10 Mar 2026 10:00:00 +0800</lastBuildDate><atom:link href="https://zzm996-zzm.github.io/seven/series/eino%E5%AE%9E%E8%B7%B5/index.xml" rel="self" type="application/rss+xml"/><item><title>sync.Once 在 eino 流复制里的妙用：一次读，多路看</title><link>https://zzm996-zzm.github.io/seven/posts/sync-once-eino-stream/</link><pubDate>Tue, 10 Mar 2026 10:00:00 +0800</pubDate><guid>https://zzm996-zzm.github.io/seven/posts/sync-once-eino-stream/</guid><description>&lt;h2 id="synconce-在-eino-流复制里的妙用一次读多路看"&gt;sync.Once 在 eino 流复制里的妙用：一次读，多路看&lt;/h2&gt;
+&lt;p&gt;这篇文档是我在阅读 &lt;code&gt;github.com/cloudwego/eino&lt;/code&gt; 源码时，对 &lt;code&gt;sync.Once&lt;/code&gt; 与流复制设计的一次系统复盘。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id="1-问题背景流式-llm-输出如何一份数据多路消费"&gt;1. 问题背景：流式 LLM 输出如何「一份数据，多路消费」？&lt;/h2&gt;
+&lt;p&gt;在 eino 的 ReAct Agent 里，ChatModel 使用流式输出：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;从 LLM 得到的是一个 &lt;code&gt;*schema.StreamReader[*schema.Message]&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;框架既需要：
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;一条分支流&lt;/strong&gt;：提前扫一遍，看这个流里有没有 &lt;code&gt;tool_calls&lt;/code&gt;（&lt;code&gt;StreamToolCallChecker&lt;/code&gt;）&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;一条业务流&lt;/strong&gt;：正常把整个消息流传给后续 graph（也就是我最终看到的输出）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;这就是典型的「&lt;strong&gt;单生产者，多消费者（fan-out）&lt;/strong&gt;」问题：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;生产者：LLM 原始流&lt;/li&gt;
+&lt;li&gt;消费者：
+&lt;ul&gt;
+&lt;li&gt;child[0]：专门用来检查是否有工具调用&lt;/li&gt;
+&lt;li&gt;child[1]：最终输出给用户的那条流&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;要求是：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;原始流里的每个 chunk &lt;strong&gt;只能读一次&lt;/strong&gt;（否则会乱序 / 重复 / 性能浪费）&lt;/li&gt;
+&lt;li&gt;每个 child 都能「独立前进」，互不干扰&lt;/li&gt;
+&lt;li&gt;多个 child 读到的同一位置的 chunk 必须是一致的&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;eino 的实现方案是：&lt;strong&gt;用链表缓存 chunk + &lt;code&gt;sync.Once&lt;/code&gt; 懒加载 + parent/child 流复制&lt;/strong&gt;。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id="2-基础回顾synconce-到底保证了什么"&gt;2. 基础回顾：sync.Once 到底保证了什么？&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;sync.Once&lt;/code&gt; 的核心语义只有一句话：&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;在并发环境下，某个函数只会被执行一次，后续所有调用都会直接返回。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;典型用法：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-go" data-lang="go"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8be9fd;font-style:italic"&gt;var&lt;/span&gt; once sync.Once
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8be9fd;font-style:italic"&gt;func&lt;/span&gt; &lt;span style="color:#50fa7b"&gt;Init&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	once.&lt;span style="color:#50fa7b"&gt;Do&lt;/span&gt;(&lt;span style="color:#8be9fd;font-style:italic"&gt;func&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;		&lt;span style="color:#6272a4"&gt;// 只需要执行一次的初始化逻辑&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;	})
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;注意两点：&lt;/p&gt;</description></item></channel></rss>

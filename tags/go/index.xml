@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Go on ZZM Dev</title><link>https://zzm996-zzm.github.io/seven/tags/go/</link><description>Recent content in Go on ZZM Dev</description><generator>Hugo</generator><language>zh-cn</language><lastBuildDate>Sun, 01 Mar 2026 10:00:00 +0800</lastBuildDate><atom:link href="https://zzm996-zzm.github.io/seven/tags/go/index.xml" rel="self" type="application/rss+xml"/><item><title>Go map 底层原理：从 hmap 到 bmap 的完整解析</title><link>https://zzm996-zzm.github.io/seven/posts/go-map-internals/</link><pubDate>Sun, 01 Mar 2026 10:00:00 +0800</pubDate><guid>https://zzm996-zzm.github.io/seven/posts/go-map-internals/</guid><description>&lt;p&gt;Go 的 &lt;code&gt;map&lt;/code&gt; 是日常开发中最常用的数据结构之一，但它底层究竟是怎么运作的？为什么不支持并发读写？扩容时发生了什么？本文从源码出发，一步一步解析清楚。&lt;/p&gt;
+&lt;h2 id="hmapmap-的顶层结构"&gt;hmap：map 的顶层结构&lt;/h2&gt;
+&lt;p&gt;在 Go runtime 中，&lt;code&gt;map&lt;/code&gt; 对应的结构是 &lt;code&gt;hmap&lt;/code&gt;：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-go" data-lang="go"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8be9fd;font-style:italic"&gt;type&lt;/span&gt; hmap &lt;span style="color:#8be9fd;font-style:italic"&gt;struct&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; count &lt;span style="color:#8be9fd"&gt;int&lt;/span&gt; &lt;span style="color:#6272a4"&gt;// 元素个数&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; flags &lt;span style="color:#8be9fd"&gt;uint8&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; B &lt;span style="color:#8be9fd"&gt;uint8&lt;/span&gt; &lt;span style="color:#6272a4"&gt;// buckets 数组长度的对数，即 len(buckets) == 2^B&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; noverflow &lt;span style="color:#8be9fd"&gt;uint16&lt;/span&gt; &lt;span style="color:#6272a4"&gt;// overflow bucket 近似数量&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; hash0 &lt;span style="color:#8be9fd"&gt;uint32&lt;/span&gt; &lt;span style="color:#6272a4"&gt;// 哈希种子&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; buckets unsafe.Pointer &lt;span style="color:#6272a4"&gt;// 指向 buckets 数组，大小为 2^B&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; oldbuckets unsafe.Pointer &lt;span style="color:#6272a4"&gt;// 扩容时保存旧 buckets&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; nevacuate &lt;span style="color:#8be9fd"&gt;uintptr&lt;/span&gt; &lt;span style="color:#6272a4"&gt;// 渐进式扩容时的进度&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; extra &lt;span style="color:#ff79c6"&gt;*&lt;/span&gt;mapextra
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;每个 &lt;code&gt;bucket&lt;/code&gt;（桶）对应的结构是 &lt;code&gt;bmap&lt;/code&gt;：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"&gt;&lt;code class="language-go" data-lang="go"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8be9fd;font-style:italic"&gt;type&lt;/span&gt; bmap &lt;span style="color:#8be9fd;font-style:italic"&gt;struct&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; tophash [bucketCnt]&lt;span style="color:#8be9fd"&gt;uint8&lt;/span&gt; &lt;span style="color:#6272a4"&gt;// 存储 key 哈希值的高 8 位&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt; &lt;span style="color:#6272a4"&gt;// 之后紧跟 key 和 value 的内存区域（编译期生成）&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id="哈希定位过程"&gt;哈希定位过程&lt;/h2&gt;
+&lt;p&gt;当你执行 &lt;code&gt;m[key]&lt;/code&gt; 时，Go 大致做了这几件事：&lt;/p&gt;</description></item></channel></rss>
