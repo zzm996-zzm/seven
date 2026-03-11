@@ -1,0 +1,52 @@
+baseURL = "https://zzm996-zzm.github.io/seven/"
+languageCode = "zh-cn"
+title = "ZZM Dev"
+theme = "pixel-cosmos"
+defaultContentLanguage = "zh"
+enableRobotsTXT = true
+enableEmoji = true
+
+[pagination]
+  pagerSize = 10
+
+[params]
+  author = "ZZM"
+  description = "系统化的技术专栏与实战文章"
+  subtitle = "tech blog · code guides · deep dives"
+  logo = "★ ZZM Dev"
+  since = "2024"
+  githubURL = "https://github.com/yourusername"
+  twitterURL = ""
+  email = ""
+  googleAnalyticsID = ""
+
+[params.hero]
+  title = "CODE &"
+  titleLine2 = "COSMIC VIBES"
+  subtitle = "tech blog · retro code guides"
+  btnPrimary = "Read Latest →"
+  btnSecondary = "Browse Posts"
+
+[taxonomies]
+  tag = "tags"
+  category = "categories"
+  series = "series"
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.highlight]
+    style = "dracula"
+    lineNos = false
+    codeFences = true
+
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
+  page = ["HTML"]
+  section = ["HTML", "RSS"]
+  taxonomy = ["HTML"]
+
+[sitemap]
+  changefreq = "weekly"
+  priority = 0.5

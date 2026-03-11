@@ -1,0 +1,14 @@
+<header class="site-header">
+  <nav class="nav-inner">
+    <a href="{{ site.Home.RelPermalink }}" class="nav-logo">{{ site.Params.logo | default "★ ZZM Dev" }}</a>
+    <ul class="nav-links">
+      <li><a href="{{ site.Home.RelPermalink }}" {{ if .IsHome }}class="active"{{ end }}>Home</a></li>
+      <li><a href="{{ "posts/" | relURL }}" {{ if (hasPrefix .RelPermalink (print site.Home.RelPermalink "posts")) }}class="active"{{ end }}>Posts</a></li>
+      <li><a href="{{ "tags/" | relURL }}" {{ if (hasPrefix .RelPermalink (print site.Home.RelPermalink "tags")) }}class="active"{{ end }}>Tags</a></li>
+      <li><a href="{{ "series/" | relURL }}" {{ if (hasPrefix .RelPermalink (print site.Home.RelPermalink "series")) }}class="active"{{ end }}>Series</a></li>
+      <li><a href="{{ "about/" | relURL }}" {{ if eq .RelPermalink (print site.Home.RelPermalink "about/") }}class="active"{{ end }}>About</a></li>
+    </ul>
+    <a href="{{ "posts/" | relURL }}" class="btn-subscribe">Subscribe ★</a>
+    <button class="nav-toggle" aria-label="Toggle menu">☰</button>
+  </nav>
+</header>

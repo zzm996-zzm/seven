@@ -1,0 +1,145 @@
+{{ define "main" }}
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <h1 class="hero-title">
+        <span class="gradient-text">{{ site.Params.hero.title | default "CODE &" }}</span>
+        <br>
+        <span class="gradient-text">{{ site.Params.hero.titleLine2 | default "COSMIC VIBES" }}</span>
+      </h1>
+      <p class="hero-subtitle">{{ site.Params.hero.subtitle | default "tech blog · code guides" }}</p>
+      <div class="hero-btns">
+        {{- $posts := where site.RegularPages "Section" "posts" }}
+        {{- $latest := index $posts 0 }}
+        {{- if $latest }}
+        <a href="{{ $latest.RelPermalink }}" class="btn-primary">{{ site.Params.hero.btnPrimary | default "Read Latest →" }}</a>
+        {{- end }}
+        <a href="{{ "posts/" | relURL }}" class="btn-secondary">{{ site.Params.hero.btnSecondary | default "Browse Posts" }}</a>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="pixel-rocket">
+        <div class="rocket-body"></div>
+        <div class="rocket-window"></div>
+        <div class="rocket-fin left"></div>
+        <div class="rocket-fin right"></div>
+        <div class="rocket-flame"></div>
+      </div>
+      <div class="pixel-stars-art">
+        <span class="pstar s1">✦</span>
+        <span class="pstar s2">✧</span>
+        <span class="pstar s3">★</span>
+        <span class="pstar s4">✦</span>
+        <span class="pstar s5">◆</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Post -->
+{{- $posts := where site.RegularPages "Section" "posts" }}
+{{- $featured := index $posts 0 }}
+{{- if $featured }}
+<section class="section-featured">
+  <div class="container">
+    <a href="{{ $featured.RelPermalink }}" class="featured-card">
+      <div class="featured-thumb">
+        {{- if $featured.Params.cover }}
+        <img src="{{ $featured.Params.cover | relURL }}" alt="{{ $featured.Title }}" loading="lazy">
+        {{- else }}
+        <div class="featured-thumb-placeholder">
+          <span class="thumb-icon">{ }</span>
+        </div>
+        {{- end }}
+      </div>
+      <div class="featured-content">
+        {{- with $featured.Params.categories }}
+        <div class="card-badges">
+          {{- range . }}<span class="badge badge-{{ lower . | replaceRE "[^a-z]" "-" }}">{{ . }}</span>{{ end }}
+        </div>
+        {{- end }}
+        <h2 class="featured-title">{{ $featured.Title }}</h2>
+        <p class="featured-excerpt">{{ $featured.Summary | truncate 160 }}</p>
+        <div class="card-meta">
+          <span>{{ $featured.Date.Format "Jan 2, 2006" }}</span>
+          <span>·</span>
+          <span>{{ math.Round (div (countwords $featured.Content) 200.0) }} min read</span>
+        </div>
+        <span class="read-more-link">Read More →</span>
+      </div>
+    </a>
+  </div>
+</section>
+{{- end }}
+
+<!-- Recent Posts Grid -->
+{{- $recentPosts := after 1 $posts }}
+{{- $recentPosts = first 6 $recentPosts }}
+{{- if $recentPosts }}
+<section class="section-posts">
+  <div class="container">
+    <h2 class="section-title">★ RECENT POSTS</h2>
+    <div class="posts-grid">
+      {{- range $recentPosts }}
+      <a href="{{ .RelPermalink }}" class="post-card">
+        {{- with .Params.categories }}
+        <div class="card-badge-top">
+          {{- range first 1 . }}<span class="badge badge-{{ lower . | replaceRE "[^a-z]" "-" }}">{{ . }}</span>{{ end }}
+        </div>
+        {{- end }}
+        <h3 class="post-card-title">{{ .Title }}</h3>
+        <p class="post-card-excerpt">{{ .Summary | truncate 100 }}</p>
+        <div class="card-meta">
+          <span>{{ .Date.Format "Jan 2" }}</span>
+          <span>·</span>
+          <span>{{ math.Round (div (countwords .Content) 200.0) }} min</span>
+        </div>
+      </a>
+      {{- end }}
+    </div>
+    <div class="section-more">
+      <a href="{{ "posts/" | relURL }}" class="btn-outline">View All Posts →</a>
+    </div>
+  </div>
+</section>
+{{- end }}
+
+<!-- Series -->
+{{- $seriesTax := site.Taxonomies.series }}
+{{- if $seriesTax }}
+<section class="section-series">
+  <div class="container">
+    <h2 class="section-title">★ SERIES</h2>
+    <div class="series-grid">
+      {{- range $name, $pages := $seriesTax }}
+      <a href="{{ print "series/" ($name | urlize) "/" | relURL }}" class="series-card">
+        <div class="series-icon">📚</div>
+        <h3 class="series-card-title">{{ $name }}</h3>
+        <p class="series-card-count">{{ len $pages }} posts</p>
+      </a>
+      {{- end }}
+    </div>
+  </div>
+</section>
+{{- end }}
+
+<!-- Categories / Tags -->
+{{- $tags := site.Taxonomies.tags }}
+{{- if $tags }}
+<section class="section-categories">
+  <div class="container">
+    <h2 class="section-title">★ CATEGORIES</h2>
+    <div class="tag-cloud">
+      {{- range $name, $pages := $tags }}
+      <a href="{{ print "tags/" ($name | urlize) "/" | relURL }}" class="tag-pill">
+        {{ $name }} <span class="tag-count">{{ len $pages }}</span>
+      </a>
+      {{- end }}
+    </div>
+  </div>
+</section>
+{{- end }}
+
+{{ end }}

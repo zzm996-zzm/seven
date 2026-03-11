@@ -1,0 +1,45 @@
+{{ define "main" }}
+<div class="list-page">
+  <div class="container">
+    <header class="list-header">
+      <h1 class="list-title">
+        {{- if .IsHome }}★ ALL POSTS
+        {{- else if eq .Kind "taxonomy" }}★ {{ .Title | upper }}
+        {{- else if eq .Kind "term" }}★ {{ .Title | upper }}
+        {{- else }}★ {{ .Title | upper }}
+        {{- end }}
+      </h1>
+      {{- with .Description }}<p class="list-description">{{ . }}</p>{{ end }}
+      {{- if ne .Kind "home" }}
+      <p class="list-count">{{ len .Pages }} posts</p>
+      {{- end }}
+    </header>
+
+    {{- if .Pages }}
+    <div class="posts-grid">
+      {{- range .Pages }}
+      <a href="{{ .RelPermalink }}" class="post-card">
+        {{- with .Params.categories }}
+        <div class="card-badge-top">
+          {{- range first 1 . }}<span class="badge badge-{{ lower . | replaceRE "[^a-z]" "-" }}">{{ . }}</span>{{ end }}
+        </div>
+        {{- end }}
+        <h3 class="post-card-title">{{ .Title }}</h3>
+        <p class="post-card-excerpt">{{ .Summary | truncate 100 }}</p>
+        <div class="card-meta">
+          <span>{{ .Date.Format "Jan 2, 2006" }}</span>
+          <span>·</span>
+          <span>{{ math.Round (div (countwords .Content) 200.0) }} min</span>
+        </div>
+      </a>
+      {{- end }}
+    </div>
+
+    {{- template "_internal/pagination.html" . }}
+    {{- else }}
+    <p class="empty-state">No posts yet. Check back soon! ✦</p>
+    {{- end }}
+
+  </div>
+</div>
+{{ end }}

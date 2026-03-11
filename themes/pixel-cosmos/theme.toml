@@ -1,0 +1,5 @@
+name = "Pixel Cosmos"
+license = "MIT"
+licenselink = "https://opensource.org/licenses/MIT"
+description = "A pixel art style tech blog theme"
+min_version = "0.120.0"

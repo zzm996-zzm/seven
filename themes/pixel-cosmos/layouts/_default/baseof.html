@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="{{ site.LanguageCode | default "zh-cn" }}">
+<head>
+  {{ partial "head.html" . }}
+</head>
+<body>
+  <div class="stars" id="stars"></div>
+  {{ partial "header.html" . }}
+  <main class="site-main">
+    {{- block "main" . }}{{- end }}
+  </main>
+  {{ partial "footer.html" . }}
+  <script src="{{ "js/main.js" | relURL }}"></script>
+</body>
+</html>

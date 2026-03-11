@@ -1,0 +1,42 @@
+{{ define "main" }}
+<div class="error-page">
+  <div class="container">
+
+    <!-- 404 Hero -->
+    <div class="error-hero">
+      <div class="error-blob"></div>
+      <div class="error-code">
+        <span class="gradient-text">404</span>
+      </div>
+      <h1 class="error-title">PAGE NOT FOUND</h1>
+      <p class="error-desc">这个页面已经飞出宇宙了，或者从未存在过。</p>
+    </div>
+
+    <!-- Navigation Cards -->
+    <div class="error-nav-grid">
+
+      <a href="{{ site.Home.RelPermalink }}" class="error-nav-card error-card-home">
+        <div class="error-nav-icon">🏠</div>
+        <h3 class="error-nav-title">HOME</h3>
+        <p class="error-nav-desc">返回主页</p>
+        <span class="error-nav-arrow">→</span>
+      </a>
+
+      <a href="{{ "posts/" | relURL }}" class="error-nav-card error-card-posts">
+        <div class="error-nav-icon">📝</div>
+        <h3 class="error-nav-title">POSTS</h3>
+        <p class="error-nav-desc">查看博客列表</p>
+        <span class="error-nav-arrow">→</span>
+      </a>
+
+      <a href="{{ "tags/" | relURL }}" class="error-nav-card error-card-tags">
+        <div class="error-nav-icon">🏷️</div>
+        <h3 class="error-nav-title">TAGS</h3>
+        <p class="error-nav-desc">查看标签</p>
+        <span class="error-nav-arrow">→</span>
+      </a>
+
+    </div>
+  </div>
+</div>
+{{ end }}
